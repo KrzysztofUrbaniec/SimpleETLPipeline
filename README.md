@@ -1,0 +1,1 @@
+The aim of this project is to build a simple ETL (Extract-Transform-Load) pipeline, which utilize Youtube API to extract data about selected channels and videos published within them, transform the data to useful representation and store it in MySQL database.
