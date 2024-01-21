@@ -39,8 +39,7 @@ class APIConnector:
         Returns data in json format.'''
 
         response = client.videos().list(part=parts,
-                                        id=video_id,
-                                        maxResults=10000
+                                        id=video_id
                                         ).execute()
         return response
     
@@ -52,10 +51,23 @@ class APIConnector:
         
         Returns a list of video ids.'''
 
-        response = client.playlistItems().list(part='contentDetails',
-                                               playlistId=playlist_id,
-                                               maxResults=10000
-                                               ).execute()
+        next_page_token = None
+        video_ids = []
 
-        video_ids = [item['contentDetails']['videoId'] for item in response['items']]
+        while True:
+            response = client.playlistItems().list(part='contentDetails',
+                                                playlistId=playlist_id,
+                                                maxResults=50,
+                                                pageToken=next_page_token
+                                                ).execute()
+        
+            ids = [item['contentDetails']['videoId'] for item in response['items']]
+            video_ids.extend(ids)
+
+            next_page_token = response.get('nextPageToken')
+
+            # If next_page_token is None (response contains no more pages), stop
+            if not next_page_token:
+                break
+
         return video_ids
