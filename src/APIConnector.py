@@ -15,35 +15,33 @@ class APIConnector:
         api_version = "v3"
         yt_api_key = self.api_key
         
-        client = googleapiclient.discovery.build(api_service_name,
+        self.client = googleapiclient.discovery.build(api_service_name,
                                                  api_version, 
                                                  developerKey=yt_api_key)
-        
-        return client
 
-    def request_channel_data(self, client: googleapiclient.discovery.Resource, parts: str, channel_name: str) -> dict:
+    def request_channel_data(self, parts: str, id: str) -> dict:
         '''Request channel data. Parts should be a coma-separated string of channel resource properties, like: brandingDetails,snippet,statistics.
         For more detailed description visit official documentation: https://developers.google.com/youtube/v3/docs/channels/list.
         
         Returns data in json format.'''
 
-        response = client.channels().list(part=parts,
-                                          forUsername=channel_name
+        response = self.client.channels().list(part=parts,
+                                          id=id
                                           ).execute()
         return response
 
-    def request_video_data(self, client: googleapiclient.discovery.Resource, parts: str, video_id: list) -> dict:
+    def request_video_data(self, parts: str, video_id: list) -> dict:
         '''Request video data. Parts should be a coma-separated string of channel resource properties, like: brandingDetails,snippet,statistics.
         For more detailed description visit official documentation: https://developers.google.com/youtube/v3/docs/videos/list.
         
         Returns data in json format.'''
 
-        response = client.videos().list(part=parts,
+        response = self.client.videos().list(part=parts,
                                         id=video_id
                                         ).execute()
         return response
     
-    def request_list_of_channel_videos(self, client: googleapiclient.discovery.Resource, playlist_id: str) -> list:
+    def request_list_of_channel_videos(self, playlist_id: str) -> list:
         '''Request channel data. Parts should be a coma-separated string of channel resource properties, like: brandingDetails,snippet,statistics.
         Playlist_id should correspond to the playlist of all videos on the channel. 
         This id can be retrieved from channel data in contentDetails -> relatedPlaylists -> uploads section of json data.
@@ -55,14 +53,19 @@ class APIConnector:
         video_ids = []
 
         while True:
-            response = client.playlistItems().list(part='contentDetails',
+            response = self.client.playlistItems().list(part='contentDetails',
                                                 playlistId=playlist_id,
                                                 maxResults=50,
                                                 pageToken=next_page_token
                                                 ).execute()
-        
-            ids = [item['contentDetails']['videoId'] for item in response['items']]
-            video_ids.extend(ids)
+            
+            for item in response['items']:
+                video_id = item['contentDetails']['videoId']
+                video_info = self.client.videos().list(part='status', id=video_id).execute()['items'][0]['status']
+
+                # Check if the video status is processed
+                if video_info['uploadStatus'] == 'processed':
+                    video_ids.append(video_id)
 
             next_page_token = response.get('nextPageToken')
 
