@@ -14,7 +14,9 @@ load_dotenv()
 
 logging.basicConfig(level=logging.INFO, filename='etl.log', filemode='w')
 
-def calculate_duration(video_duration):
+def calculate_duration(video_duration: str) -> int:
+    '''Calculate duration of the video in seconds.'''
+
     hour_pattern = re.compile(r'(\d+)H')
     minute_pattern = re.compile(r'(\d+)M')
     second_pattern = re.compile(r'(\d+)S')
@@ -35,7 +37,9 @@ def calculate_duration(video_duration):
 
     return int(total_duration)
 
-def fetch_channel_data(api_connector, channel_id):
+def fetch_channel_data(api_connector: APIConnector, channel_id: str) -> (dict, str):
+    '''Fetch channel id, channel name, publication date, number of videos, number of subscribers and the view count for a particular channel.'''
+
     logging.info(f'Trying to fetch channel data for: {channel_id}')
     channel_data = api_connector.request_channel_data(parts="contentDetails,statistics,snippet", id=channel_id)
 
@@ -59,11 +63,15 @@ def fetch_channel_data(api_connector, channel_id):
         logging.warning(f'Requested channel: {channel_id} has not been found. Proceeding to the next channel.')
         return None, None
 
-def fetch_list_of_videos(api_connector, channel_full_playlist_id):
+def fetch_list_of_videos(api_connector: APIConnector, channel_full_playlist_id) -> list:
+    '''Fetch list of video ids uploaded to a specific channel.'''
+
     videos_ids = api_connector.request_list_of_channel_videos(channel_full_playlist_id)
     return videos_ids
 
-def fetch_video_details(api_connector, video_ids):
+def fetch_video_details(api_connector: APIConnector, video_ids: list):
+    '''Fetch video id, video title, publication date, duration in seconds, view count, like count and comment count for video_ids.'''
+
     video_data_list = []
 
     for video_id in video_ids:
@@ -86,7 +94,9 @@ def fetch_video_details(api_connector, video_ids):
 
     return video_data_list
 
-def save_to_database(channels_df, videos_df, channel_to_video_df):
+def save_to_database(channels_df: pd.DataFrame, videos_df: pd.DataFrame, channel_to_video_df: pd.DataFrame):
+    '''Save channel, video and channel-to-video tables to a MySQL database.'''
+
     engine = sqlalchemy.create_engine(f'mysql+pymysql://{os.getenv("MYSQL_USER")}:{os.getenv("MYSQL_PASSWORD")}@{os.getenv("MYSQL_HOST")}:3306/{os.getenv("MYSQL_DB")}')
     
     channels_df.to_sql('channel_data', con=engine, index=False, if_exists='replace')
@@ -132,7 +142,7 @@ def extract(channels: list):
 
         return channels_df, videos_df, channel_to_video_df
     
-def transform(channels_df, videos_df, channel_to_video_df):
+def transform(channels_df: pd.DataFrame, videos_df: pd.DataFrame, channel_to_video_df: pd.DataFrame) -> pd.DataFrame:
    
     # Calculate engagement rate 
     videos_df['view_count'] = videos_df['view_count'].astype(int)
@@ -156,6 +166,6 @@ def transform(channels_df, videos_df, channel_to_video_df):
 
     return final_df
 
-def load(transformed_df, table_name):
+def load(transformed_df: pd.DataFrame, table_name: str):
     engine = sqlalchemy.create_engine(f'mysql+pymysql://{os.getenv("MYSQL_USER")}:{os.getenv("MYSQL_PASSWORD")}@{os.getenv("MYSQL_HOST")}:3306/{os.getenv("MYSQL_DB")}')
     transformed_df.to_sql(table_name, con=engine, index=False, if_exists='replace')
